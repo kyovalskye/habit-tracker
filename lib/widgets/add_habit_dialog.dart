@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:habit_tracker/models/habit.dart';
 
 class AddHabitBottomSheet extends StatefulWidget {
   final List<IconData> availableIcons;
   final List<Color> availableColors;
-  final Function(String, String, IconData, Color) onAddHabit;
+  final void Function(Habit) onAddHabit;
 
   const AddHabitBottomSheet({
     Key? key,
@@ -23,6 +24,13 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
   IconData _selectedIcon = Icons.fitness_center;
   Color _selectedColor = const Color(0xFF6366F1);
 
+  // Scheduling
+  HabitFrequencyType _frequencyType = HabitFrequencyType.specificDays;
+  Set<int> _selectedWeekDays = {1, 2, 3, 4, 5}; // Mon-Fri default
+  int _daysPerWeek = 3;
+  int _daysPerMonth = 10;
+  int _daysPerYear = 100;
+
   late AnimationController _slideController;
   late AnimationController _fadeController;
   late AnimationController _scaleController;
@@ -37,7 +45,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
     _selectedIcon = widget.availableIcons.first;
     _selectedColor = widget.availableColors.first;
 
-    // Animation controllers
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -53,7 +60,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
       vsync: this,
     );
 
-    // Animations
     _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
         .animate(
           CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
@@ -68,7 +74,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
     );
 
-    // Start animations
     _slideController.forward();
     _fadeController.forward();
     _scaleController.forward();
@@ -102,7 +107,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
       ),
       child: Column(
         children: [
-          // Handle
           Container(
             width: 36,
             height: 4,
@@ -112,8 +116,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
-          // Title
           Text(
             "Choose Color",
             style: TextStyle(
@@ -123,10 +125,7 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
               letterSpacing: -0.3,
             ),
           ),
-
           const SizedBox(height: 32),
-
-          // Color grid
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -191,15 +190,22 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
     }
 
     String subtitle = _subtitleController.text.trim();
-    if (subtitle.isEmpty) subtitle = "Daily";
+    if (subtitle.isEmpty) subtitle = "Daily habit";
 
-    widget.onAddHabit(
-      _titleController.text.trim(),
-      subtitle,
-      _selectedIcon,
-      _selectedColor,
+    Habit newHabit = Habit(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text.trim(),
+      subtitle: subtitle,
+      icon: _selectedIcon,
+      color: _selectedColor,
+      frequencyType: _frequencyType,
+      specificWeekDays: _selectedWeekDays.toList(),
+      targetDaysPerWeek: _daysPerWeek,
+      targetDaysPerMonth: _daysPerMonth,
+      targetDaysPerYear: _daysPerYear,
     );
 
+    widget.onAddHabit(newHabit);
     Navigator.of(context).pop();
   }
 
@@ -245,7 +251,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
               ),
               child: Column(
                 children: [
-                  // Floating handle with glow
                   Container(
                     width: 48,
                     height: 5,
@@ -267,14 +272,12 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                       ],
                     ),
                   ),
-
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 28),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header with gradient text
                           ShaderMask(
                             shaderCallback: (bounds) => LinearGradient(
                               colors: [
@@ -292,9 +295,7 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 12),
-
                           Text(
                             "Build something amazing, one day at a time",
                             style: TextStyle(
@@ -303,30 +304,44 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-
                           const SizedBox(height: 40),
 
-                          // Floating input card for habit name
                           _buildFloatingInputCard(
                             label: "Habit Name",
                             controller: _titleController,
                             hint: "e.g. Morning meditation",
                             icon: Icons.lightbulb_outline_rounded,
                           ),
-
                           const SizedBox(height: 24),
 
-                          // Floating input card for frequency
                           _buildFloatingInputCard(
-                            label: "Frequency",
+                            label: "Description",
                             controller: _subtitleController,
-                            hint: "Daily",
-                            icon: Icons.repeat_rounded,
+                            hint: "Optional note",
+                            icon: Icons.notes_rounded,
                           ),
-
                           const SizedBox(height: 32),
 
-                          // Icon selection with floating cards
+                          // Frequency Type Selection
+                          Text(
+                            "Frequency",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withOpacity(0.9),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          _buildFrequencyTypeSelector(),
+                          const SizedBox(height: 20),
+
+                          // Dynamic frequency options
+                          _buildFrequencyOptions(),
+                          const SizedBox(height: 32),
+
+                          // Icon selection
                           Text(
                             "Choose Icon",
                             style: TextStyle(
@@ -336,7 +351,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               letterSpacing: -0.2,
                             ),
                           ),
-
                           const SizedBox(height: 16),
 
                           SizedBox(
@@ -349,11 +363,8 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                                 final isSelected = icon == _selectedIcon;
 
                                 return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedIcon = icon;
-                                    });
-                                  },
+                                  onTap: () =>
+                                      setState(() => _selectedIcon = icon),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
                                     width: 64,
@@ -405,7 +416,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               },
                             ),
                           ),
-
                           const SizedBox(height: 32),
 
                           // Color selection
@@ -418,7 +428,6 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               letterSpacing: -0.2,
                             ),
                           ),
-
                           const SizedBox(height: 16),
 
                           GestureDetector(
@@ -449,109 +458,12 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 32),
-
-                          // Live preview card
-                          if (_titleController.text.isNotEmpty) ...[
-                            Text(
-                              "Preview",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white.withOpacity(0.9),
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    _selectedColor,
-                                    _selectedColor.withOpacity(0.8),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _selectedColor.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.3),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      _selectedIcon,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 16),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _titleController.text,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _subtitleController.text.isEmpty
-                                              ? "Daily"
-                                              : _subtitleController.text,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.white.withOpacity(
-                                              0.8,
-                                            ),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 32),
-                          ],
                         ],
                       ),
                     ),
                   ),
 
-                  // Bottom action buttons with glassmorphism
                   Container(
                     padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(
@@ -572,9 +484,7 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
                             isPrimary: false,
                           ),
                         ),
-
                         const SizedBox(width: 16),
-
                         Expanded(
                           child: _buildActionButton(
                             text: "Create Habit",
@@ -590,6 +500,248 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFrequencyTypeSelector() {
+    return Column(
+      children: [
+        _buildFrequencyOption(
+          'Specific days in week',
+          HabitFrequencyType.specificDays,
+          Icons.calendar_view_week_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildFrequencyOption(
+          'X days per week',
+          HabitFrequencyType.daysPerWeek,
+          Icons.view_week_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildFrequencyOption(
+          'X days per month',
+          HabitFrequencyType.daysPerMonth,
+          Icons.calendar_month_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildFrequencyOption(
+          'X days per year',
+          HabitFrequencyType.daysPerYear,
+          Icons.calendar_today_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFrequencyOption(
+    String label,
+    HabitFrequencyType type,
+    IconData icon,
+  ) {
+    bool isSelected = _frequencyType == type;
+
+    return GestureDetector(
+      onTap: () => setState(() => _frequencyType = type),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    _selectedColor.withOpacity(0.3),
+                    _selectedColor.withOpacity(0.1),
+                  ],
+                )
+              : LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.05),
+                  ],
+                ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? _selectedColor : Colors.white.withOpacity(0.2),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? _selectedColor
+                  : Colors.white.withOpacity(0.7),
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.8),
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, color: _selectedColor, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFrequencyOptions() {
+    switch (_frequencyType) {
+      case HabitFrequencyType.specificDays:
+        return _buildWeekDaySelector();
+      case HabitFrequencyType.daysPerWeek:
+        return _buildNumberSelector(
+          'Days per week',
+          _daysPerWeek,
+          1,
+          7,
+          (val) => setState(() => _daysPerWeek = val),
+        );
+      case HabitFrequencyType.daysPerMonth:
+        return _buildNumberSelector(
+          'Days per month',
+          _daysPerMonth,
+          1,
+          31,
+          (val) => setState(() => _daysPerMonth = val),
+        );
+      case HabitFrequencyType.daysPerYear:
+        return _buildNumberSelector(
+          'Days per year',
+          _daysPerYear,
+          1,
+          365,
+          (val) => setState(() => _daysPerYear = val),
+        );
+    }
+  }
+
+  Widget _buildWeekDaySelector() {
+    List<String> dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(7, (index) {
+        int dayNumber = index + 1;
+        bool isSelected = _selectedWeekDays.contains(dayNumber);
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _selectedWeekDays.remove(dayNumber);
+              } else {
+                _selectedWeekDays.add(dayNumber);
+              }
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? _selectedColor
+                  : Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected
+                    ? Colors.white.withOpacity(0.3)
+                    : Colors.white.withOpacity(0.2),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                dayNames[index],
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildNumberSelector(
+    String label,
+    int value,
+    int min,
+    int max,
+    Function(int) onChanged,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.1),
+            Colors.white.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.remove_circle_outline, color: _selectedColor),
+                onPressed: value > min ? () => onChanged(value - 1) : null,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: _selectedColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  value.toString(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add_circle_outline, color: _selectedColor),
+                onPressed: value < max ? () => onChanged(value + 1) : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -611,9 +763,7 @@ class _AddHabitBottomSheetState extends State<AddHabitBottomSheet>
             color: Colors.white.withOpacity(0.9),
           ),
         ),
-
         const SizedBox(height: 12),
-
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
